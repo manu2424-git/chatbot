@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from transformers import pipeline
 
-# Initialize FastAPI
 app = FastAPI()
 
 # Allow frontend requests
@@ -15,8 +14,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Hugging Face zero-shot classifier
-classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+# Lazy loading for model
+classifier = None
 
 class ChatRequest(BaseModel):
     message: str
@@ -24,16 +23,15 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
+    global classifier
+    if classifier is None:
+        classifier = pipeline("zero-shot-classification", model="facebook/bart-base-mnli")
+
     user_message = request.message
-
-    # Define possible intents
     candidate_labels = ["career guidance", "course recommendation", "college information", "faq"]
-
-    # Classify intent
     result = classifier(user_message, candidate_labels)
     intent = result["labels"][0]
 
-    # Respond based on intent
     if intent == "career guidance":
         response = "Based on your interests, careers in Data Science, Web Development, or Design could be a good fit."
     elif intent == "course recommendation":
@@ -44,5 +42,4 @@ async def chat_endpoint(request: ChatRequest):
         response = "I can answer common career-related questions like job trends, salaries, or skill requirements."
     else:
         response = "Can you tell me more about your interests?"
-
     return {"reply": response, "intent": intent}
