@@ -25,7 +25,7 @@ class ChatRequest(BaseModel):
 async def chat_endpoint(request: ChatRequest):
     global classifier
     if classifier is None:
-        classifier = pipeline("zero-shot-classification", model="facebook/bart-base-mnli")
+        classifier = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli")
 
     user_message = request.message
     candidate_labels = ["career guidance", "course recommendation", "college information", "faq"]
