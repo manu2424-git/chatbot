@@ -5,7 +5,7 @@ from transformers import pipeline
 
 app = FastAPI()
 
-# Allow frontend requests
+# CORS add chey - frontend nunchi call cheyyadaniki
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,32 +14,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Lazy loading for model
-classifier = None
+# IMPORTANT: Model ni global ga okkasari matrame load chey
+print("Loading model...")
+classifier = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli")
+print("Model loaded!")
 
 class ChatRequest(BaseModel):
     message: str
-    user_profile: dict = {}
+    user_profile: dict
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
-    global classifier
-    if classifier is None:
-        classifier = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli")
-
-    user_message = request.message
-    candidate_labels = ["career guidance", "course recommendation", "college information", "faq"]
-    result = classifier(user_message, candidate_labels)
+    message = request.message
+    candidate_labels = ["career guidance", "course recommendation", "college information"]
+    
+    result = classifier(message, candidate_labels)
     intent = result["labels"][0]
+    
+    reply = f"Based on your message, I think you need {intent}."
+    
+    return {"reply": reply, "intent": intent}
 
-    if intent == "career guidance":
-        response = "Based on your interests, careers in Data Science, Web Development, or Design could be a good fit."
-    elif intent == "course recommendation":
-        response = "I recommend exploring courses in Python, Machine Learning, or UI/UX Design."
-    elif intent == "college information":
-        response = "Top colleges for Computer Science include MIT, Stanford, and IIT Bombay."
-    elif intent == "faq":
-        response = "I can answer common career-related questions like job trends, salaries, or skill requirements."
-    else:
-        response = "Can you tell me more about your interests?"
-    return {"reply": response, "intent": intent}
+@app.get("/")
+def read_root():
+    return {"message": "Chatbot API is running"}
